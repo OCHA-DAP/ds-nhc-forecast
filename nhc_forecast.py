@@ -15,6 +15,7 @@ from lat_lon_parser import parse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 import pandas as pd
 import os,io
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +45,11 @@ class AzureBlobUpload:
             f"DefaultEndpointsProtocol=https;AccountName={account};AccountKey= "
             f"{key};EndpointSuffix=core.windows.net")
 
-        blob_client = blob_service.get_blob_client(container=container,
-                                                   blob=f"{dataset_name}.csv")
+        dstr = time.strftime("%Y%m%d")
+        tstr = time.strftime("%H%M%S")
+        blob_client = blob_service.get_blob_client(
+            container=container,
+            blob=f"{dataset_name}/{dstr}/{dataset_name}_{tstr}.csv")
 
         try:
             stream = io.StringIO()
