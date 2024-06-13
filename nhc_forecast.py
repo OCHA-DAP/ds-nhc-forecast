@@ -8,16 +8,13 @@ TODO
 
 """
 import logging
-from datetime import datetime
-from hdx.data.dataset import Dataset
 from hdx.utilities.downloader import DownloadError
-from slugify import slugify
 from bs4 import BeautifulSoup
 from dateutil import parser
 from lat_lon_parser import parse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 import pandas as pd
-import os, sys, io
+import os,io
 
 logger = logging.getLogger(__name__)
 
@@ -52,14 +49,13 @@ class AzureBlobUpload:
 
         try:
             stream = io.StringIO()
-            df = pd.DataFrame(data["observed_tracks"])
-            df.to_csv(stream, sep=";")
+            df = pd.DataFrame(data[dataset_name])
+            df.to_csv(stream, sep=";", index=False)
             file_to_blob = stream.getvalue()
-            blob_client.upload_blob(file_to_blob,overwrite=True,content_settings=ContentSettings(content_type="text/csv"))
+            blob_client.upload_blob(file_to_blob, overwrite=True,
+                                    content_settings=ContentSettings(content_type="text/csv"))
         except Exception:
             logger.error(f"Failed to upload dataset: {dataset_name}")
-
-        print("here!")
 
 
 def get_valid_time_in_datetime(validTime, issuance):
@@ -120,13 +116,15 @@ class NHCHurricaneForecast:
             34 KT... 80NE  50SE  30SW  60NW.
         :return:
         """
-        #TODO: change to this before scheduling -> base_url = self.configuration["base_url"]
-        sample_url = self.configuration["sample_url"]
+        base_url = self.configuration["base_url"]
 
-        nhc_forecasts = self.retriever.download_json(sample_url)
-        #TODO add if to check if there's data
+        nhc_forecasts = self.retriever.download_json(base_url)
 
-        # print(nhc_forecasts)
+        # Check if there's data
+        if not nhc_forecasts["activeStorms"]:
+            logger.info(f"There are no active storms happening right now.")
+            return None
+
         self.dataset_data["observed_tracks"] = []
         self.dataset_data["forecasted_tracks"] = []
 
@@ -179,19 +177,15 @@ class NHCHurricaneForecast:
 
                 if latitude and longitude and maxwind:
                     forecast = {"id": id,
-                         "name": name,
-                         "issuance": issuance,
-                         "basin": id[:2],
-                         "latitude": parse(latitude),
-                         "longitude": parse(longitude),
-                         "maxwind": int(maxwind),
-                         "validTime": validTime}
+                                "name": name,
+                                "issuance": issuance,
+                                "basin": id[:2],
+                                "latitude": parse(latitude),
+                                "longitude": parse(longitude),
+                                "maxwind": int(maxwind),
+                                "validTime": validTime}
                     self.dataset_data["forecasted_tracks"].append(forecast)
                     maxwind = latitude = longitude = validTime = None
-
-
-        print(self.dataset_data["observed_tracks"])
-        print(self.dataset_data["forecasted_tracks"])
 
         return ["observed_tracks", "forecasted_tracks"]
 
@@ -207,61 +201,16 @@ class NHCHurricaneForecast:
             key = self.configuration["key"]
 
         aub = AzureBlobUpload()
-        aub.upload_file(dataset_name=dataset_names,
+        aub.upload_file(dataset_name=dataset_names[0],
                         account=account,
                         container=container,
                         key=key,
                         data=self.dataset_data)
-        import sys
-        sys.exit(1)
 
-        # Setting metadata and configurations
-        name = self.configuration["dataset_names"]["WFP-MARKET-MONITORING"]
-        title = self.configuration["title"]
-        update_frequency = self.configuration["update_frequency"]
-        dataset = Dataset({"name": slugify(name), "title": title})
-        rows = self.dataset_data[dataset_names]
-        dataset.set_maintainer(self.configuration["maintainer_id"])
-        dataset.set_organization(self.configuration["organization_id"])
-        dataset.set_expected_update_frequency(update_frequency)
-        dataset.set_subnational(False)
-        dataset.add_other_location("world")
-        dataset["notes"] = self.configuration["notes"]
-        filename = f"{dataset_names.lower()}.csv"
-        resource_data = {"name": filename,
-                         "description": self.configuration["description"]}
-        tags = sorted([t for t in self.configuration["allowed_tags"]])
-        dataset.add_tags(tags)
+        aub.upload_file(dataset_name=dataset_names[1],
+                        account=account,
+                        container=container,
+                        key=key,
+                        data=self.dataset_data)
 
-        # Setting time period
-        start_date = self.configuration["start_date"]
-        ongoing = False
-        if not start_date:
-            logger.error(f"Start date missing for {dataset_names}")
-            return None, None
-        dataset.set_time_period(start_date, self.created_date, ongoing)
-
-        headers = rows[0].keys()
-        date_headers = [h for h in headers if "date" in h.lower() and type(rows[0][h]) == int]
-        for row in rows:
-            for date_header in date_headers:
-                row_date = row[date_header]
-                if not row_date:
-                    continue
-                if len(str(row_date)) > 9:
-                    row_date = row_date / 1000
-                row_date = datetime.utcfromtimestamp(row_date)
-                row_date = row_date.strftime("%Y-%m-%d")
-                row[date_header] = row_date
-
-        rows
-        dataset.generate_resource_from_rows(
-            self.folder,
-            filename,
-            rows,
-            resource_data,
-            list(rows[0].keys()),
-            encoding='utf-8'
-        )
-
-        return dataset
+        return dataset_names
