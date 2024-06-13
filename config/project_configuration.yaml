@@ -1,17 +1,6 @@
 # Collector specific configuration
+# sample_url: "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json"
 base_url: "https://www.nhc.noaa.gov/CurrentStorms.json"
-sample_url: "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json"
 account: "account"
 container: "container"
-key: "add-here" # don't add to source control
-
-
-# Metadata
-# TODO review below
-start_date: "2016-10-01"
-title: "NHC"
-update_frequency: "monthly"
-maintainer_id: "2f9fd160-2a16-49c0-89d6-0bc3230599bf"
-organization_id: "75b74751-1b97-4cde-939b-1e4fb083c85c"
-description: "test [Description]"
-notes: "test [notes]"
+key: "key"

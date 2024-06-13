@@ -27,6 +27,9 @@ jobs:
         HDX_KEY: ${{ secrets.HDX_BOT_SCRAPERS_API_TOKEN }}
         PREPREFIX: ${{ secrets.PREPREFIX }}
         USER_AGENT: ${{ secrets.USER_AGENT }}
+        CONTAINER: ${{ secrets.CONTAINER }}
+        STORAGE_ACCOUNT: ${{ secrets.STORAGE_ACCOUNT }}
+        KEY: ${{ secrets.KEY }}
       run: |
         python run.py
     - name: Commit updated data bundle

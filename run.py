@@ -4,9 +4,7 @@ Top level script. Calls other functions that generate datasets that this script 
 
 """
 import logging
-from copy import deepcopy
-from os.path import expanduser, join, exists
-from typing import Any
+from os.path import expanduser, join
 
 from hdx.api.configuration import Configuration
 from hdx.facades.infer_arguments import facade
@@ -28,12 +26,15 @@ def main(save: bool = False, use_saved: bool = False) -> None:
             configuration = Configuration.read()
             nhc_forecast = NHCHurricaneForecast(configuration, retriever, folder, errors)
             datasets = nhc_forecast.get_data()
-            logger.info(f"Number of datasets to upload: {len(datasets)}")
-            try:
-                nhc_forecast.upload_dataset(datasets)
-                logger.info("Successfully upload file to blob")
-            except Exception:
-                logger.error("Failed to upload file to blob")
+            if datasets:
+                logger.info(f"Number of datasets to upload: {len(datasets)}")
+                try:
+                    nhc_forecast.upload_dataset(datasets)
+                    logger.info("Successfully uploaded file(s) to blob")
+                except Exception:
+                    logger.error("Failed to upload file to blob")
+            else:
+                logger.info(f"No datasets were uploaded.")
 
 
 if __name__ == "__main__":
