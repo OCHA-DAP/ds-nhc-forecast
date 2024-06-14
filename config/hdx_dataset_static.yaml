@@ -1,0 +1,5 @@
+license_id: "cc-by-igo"
+methodology: "https://www.nhc.noaa.gov"
+dataset_source: "NHC"
+package_creator: "isabelle-tot"
+private: False
