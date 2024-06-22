@@ -1,10 +1,10 @@
 #!/usr/bin/python
 """
-Generic Blob into HDX Pipeline:
 ------------
 
-TODO
-- Add summary about this dataset pipeline
+NHC Forecast
+- This pipeline extracts data from NHC and appends whenever there is an update
+ to the observed tracks or forecasted tracks.
 
 """
 import logging
@@ -15,7 +15,6 @@ from lat_lon_parser import parse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 import pandas as pd
 import os,io
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +44,13 @@ class AzureBlobUpload:
             f"DefaultEndpointsProtocol=https;AccountName={account};AccountKey= "
             f"{key};EndpointSuffix=core.windows.net")
 
-        dstr = time.strftime("%Y%m%d")
-        tstr = time.strftime("%H%M%S")
         blob_client = blob_service.get_blob_client(
             container=container,
-            blob=f"{dataset_name}/{dstr}/{dataset_name}_{tstr}.csv")
+            blob=f"noaa/nhc/{dataset_name}.csv")
 
         try:
             stream = io.StringIO()
-            df = pd.DataFrame(data[dataset_name])
+            df = pd.DataFrame(data)
             df.to_csv(stream, sep=";", index=False)
             file_to_blob = stream.getvalue()
             blob_client.upload_blob(file_to_blob, overwrite=True,
@@ -204,17 +201,46 @@ class NHCHurricaneForecast:
             container = self.configuration["container"]
             key = self.configuration["key"]
 
-        aub = AzureBlobUpload()
-        aub.upload_file(dataset_name=dataset_names[0],
-                        account=account,
-                        container=container,
-                        key=key,
-                        data=self.dataset_data)
+        forecasted_tracks_blob = self.retriever.download_file(
+            url="test",
+            account=account,
+            container=container,
+            key=key,
+            blob="forecasted_tracks.csv")
 
-        aub.upload_file(dataset_name=dataset_names[1],
+        observed_tracks_blob = self.retriever.download_file(
+            url="test",
+            account=account,
+            container=container,
+            key=key,
+            blob="observed_tracks.csv")
+
+        forecasted_tracks = self.dataset_data["forecasted_tracks"]
+        stream = io.StringIO()
+        forecasted_tracks = pd.DataFrame(forecasted_tracks)
+        forecasted_tracks.to_csv(stream, sep=";", index=False)
+        forecasted_tracks_df = pd.read_csv(forecasted_tracks_blob, sep=";", escapechar='\\')
+
+        observed_tracks = self.dataset_data["observed_tracks"]
+        stream = io.StringIO()
+        observed_tracks = pd.DataFrame(observed_tracks)
+        observed_tracks.to_csv(stream, sep=";", index=False)
+        observed_tracks_df = pd.read_csv(observed_tracks_blob, sep=";", escapechar='\\')
+
+        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks])
+        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks])
+
+        aub = AzureBlobUpload()
+        aub.upload_file(dataset_name="forecasted_tracks",
                         account=account,
                         container=container,
                         key=key,
-                        data=self.dataset_data)
+                        data=forecasted_tracks_append)
+
+        aub.upload_file(dataset_name="observed_tracks",
+                        account=account,
+                        container=container,
+                        key=key,
+                        data=observed_tracks_append)
 
         return dataset_names
