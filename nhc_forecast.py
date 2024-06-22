@@ -15,6 +15,7 @@ from lat_lon_parser import parse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 import pandas as pd
 import os,io
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -206,14 +207,14 @@ class NHCHurricaneForecast:
             account=account,
             container=container,
             key=key,
-            blob="forecasted_tracks.csv")
+            blob="noaa/nhc/forecasted_tracks.csv")
 
         observed_tracks_blob = self.retriever.download_file(
             url="test",
             account=account,
             container=container,
             key=key,
-            blob="observed_tracks.csv")
+            blob="noaa/nhc/observed_tracks.csv")
 
         forecasted_tracks = self.dataset_data["forecasted_tracks"]
         stream = io.StringIO()
@@ -227,10 +228,26 @@ class NHCHurricaneForecast:
         observed_tracks.to_csv(stream, sep=";", index=False)
         observed_tracks_df = pd.read_csv(observed_tracks_blob, sep=";", escapechar='\\')
 
-        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks])
-        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks])
+        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks]).drop_duplicates().reset_index(drop=True)
+        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks]).drop_duplicates().reset_index(drop=True)
 
         aub = AzureBlobUpload()
+
+        # Adding previous file to backup folder
+        dstr = time.strftime("%Y%m%d")
+        tstr = time.strftime("%H%M%S")
+        aub.upload_file(dataset_name=f"previous/{dstr}_{tstr}/forecasted_tracks",
+                        account=account,
+                        container=container,
+                        key=key,
+                        data=forecasted_tracks_df)
+        aub.upload_file(dataset_name=f"previous/{dstr}_{tstr}/observed_tracks",
+                        account=account,
+                        container=container,
+                        key=key,
+                        data=observed_tracks_df)
+
+        # Adding new rows to be appended in historical file
         aub.upload_file(dataset_name="forecasted_tracks",
                         account=account,
                         container=container,
