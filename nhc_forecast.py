@@ -133,12 +133,12 @@ class NHCHurricaneForecast:
         :return:
         """
         base_url = self.configuration["base_url"]
-        trigger_hti_hurricanes_action = False
 
         nhc_forecasts = self.retriever.download_json(base_url)
 
         # Check if there's data
         if not nhc_forecasts["activeStorms"]:
+            trigger_hti_hurricanes_action = False
             logger.info(f"There are no active storms happening right now.")
             return None
         else:
