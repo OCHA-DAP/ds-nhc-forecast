@@ -8,6 +8,7 @@ NHC Forecast
 
 """
 import logging
+import requests
 from hdx.utilities.downloader import DownloadError
 from bs4 import BeautifulSoup
 from dateutil import parser
@@ -76,6 +77,19 @@ def get_valid_time_in_datetime(validTime, issuance):
     return newdatetime.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
+def trigger_for_active_storms(url, key):
+
+    headers = {"Accept": "application/vnd.github.v3+json",
+               "Authorization": key,
+               "Content-Type": "application/json"
+               }
+    data = '{"ref":"' + "main" + '"}'
+
+    resp = requests.post(url, headers=headers, data=data)
+
+    return resp
+
+
 class NHCHurricaneForecast:
     def __init__(self, configuration, retriever, folder, errors):
         self.configuration = configuration
@@ -119,6 +133,7 @@ class NHCHurricaneForecast:
         :return:
         """
         base_url = self.configuration["base_url"]
+        trigger_hti_hurricanes_action = False
 
         nhc_forecasts = self.retriever.download_json(base_url)
 
@@ -126,6 +141,8 @@ class NHCHurricaneForecast:
         if not nhc_forecasts["activeStorms"]:
             logger.info(f"There are no active storms happening right now.")
             return None
+        else:
+            trigger_hti_hurricanes_action = True
 
         self.dataset_data["observed_tracks"] = []
         self.dataset_data["forecasted_tracks"] = []
@@ -165,7 +182,6 @@ class NHCHurricaneForecast:
                 forecast_line = ln.split(" ")
 
                 if ln.startswith("FORECAST VALID") and len(forecast_line) >= 5:
-                    # TODO parse the values below before adding to blob
                     validTime = get_valid_time_in_datetime(forecast_line[2], issuance)
                     latitude = forecast_line[3]
                     longitude = forecast_line[4]
@@ -189,18 +205,22 @@ class NHCHurricaneForecast:
                     self.dataset_data["forecasted_tracks"].append(forecast)
                     maxwind = latitude = longitude = validTime = None
 
-        return ["observed_tracks", "forecasted_tracks"]
+        return ["observed_tracks", "forecasted_tracks"], trigger_hti_hurricanes_action
 
-    def upload_dataset(self, dataset_names):
+    def upload_dataset(self, dataset_names, trigger_hti_hurricanes_action):
 
         try:
             account = os.environ["STORAGE_ACCOUNT"]
             container = os.environ["CONTAINER"]
             key = os.environ["KEY"]
+            ghp = os.environ["GHP"]
+            ghaction_url = os.environ["GH_ACTION_URL"]
         except Exception:
             account = self.configuration["account"]
             container = self.configuration["container"]
             key = self.configuration["key"]
+            ghp = self.configuration["ghp"]
+            ghaction_url = self.configuration["ghaction_url"]
 
         forecasted_tracks_blob = self.retriever.download_file(
             url="test",
@@ -259,5 +279,9 @@ class NHCHurricaneForecast:
                         container=container,
                         key=key,
                         data=observed_tracks_append)
+
+        if trigger_hti_hurricanes_action:
+            logger.info("Triggering Haiti Hurricanes action")
+            trigger_for_active_storms(ghaction_url, ghp, observed_tracks_df["id"], observed_tracks["id"])
 
         return dataset_names
