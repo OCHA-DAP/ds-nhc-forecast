@@ -138,11 +138,8 @@ class NHCHurricaneForecast:
 
         # Check if there's data
         if not nhc_forecasts["activeStorms"]:
-            trigger_hti_hurricanes_action = False
             logger.info(f"There are no active storms happening right now.")
             return None
-        else:
-            trigger_hti_hurricanes_action = True
 
         self.dataset_data["observed_tracks"] = []
         self.dataset_data["forecasted_tracks"] = []
@@ -205,9 +202,9 @@ class NHCHurricaneForecast:
                     self.dataset_data["forecasted_tracks"].append(forecast)
                     maxwind = latitude = longitude = validTime = None
 
-        return ["observed_tracks", "forecasted_tracks"], trigger_hti_hurricanes_action
+        return ["observed_tracks", "forecasted_tracks"]
 
-    def upload_dataset(self, dataset_names, trigger_hti_hurricanes_action):
+    def upload_dataset(self, dataset_names):
 
         try:
             account = os.environ["STORAGE_ACCOUNT"]
@@ -280,8 +277,10 @@ class NHCHurricaneForecast:
                         key=key,
                         data=observed_tracks_append)
 
-        if trigger_hti_hurricanes_action:
-            logger.info("Triggering Haiti Hurricanes action")
-            trigger_for_active_storms(ghaction_url, ghp, observed_tracks_df["id"], observed_tracks["id"])
+        try:
+            trigger_for_active_storms(ghaction_url, ghp)
+            logger.info("Successfully triggered Haiti Hurricanes action.")
+        except Exception:
+            logger.error("Failed to trigger Haiti Hurricanes action.")
 
         return dataset_names
