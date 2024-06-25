@@ -30,6 +30,8 @@ jobs:
         CONTAINER: ${{ secrets.CONTAINER }}
         STORAGE_ACCOUNT: ${{ secrets.STORAGE_ACCOUNT }}
         KEY: ${{ secrets.KEY }}
+        GHG: ${{ secrets.GHP }}
+        GH_ACTION_URL: ${{ secrets.GH_ACTION_URL }}
       run: |
         python run.py
     - name: Commit updated data bundle

@@ -136,11 +136,11 @@ def main(save: bool = False, use_saved: bool = False) -> None:
                     downloader, folder, "saved_data", folder, save, use_saved)
                 configuration = Configuration.read()
                 nhc_forecast = NHCHurricaneForecast(configuration, retriever, folder, errors)
-                datasets = nhc_forecast.get_data()
+                datasets, trigger = nhc_forecast.get_data()
                 if datasets:
                     logger.info(f"Number of datasets to upload: {len(datasets)}")
                     try:
-                        nhc_forecast.upload_dataset(datasets)
+                        nhc_forecast.upload_dataset(datasets, trigger)
                         logger.info("Successfully uploaded file(s) to blob")
                     except Exception:
                         logger.error("Failed to upload file to blob")
