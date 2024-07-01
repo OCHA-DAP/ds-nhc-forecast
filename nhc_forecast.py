@@ -91,12 +91,10 @@ def trigger_for_active_storms(url, key):
 
 
 class NHCHurricaneForecast:
-    def __init__(self, configuration, retriever, folder, errors):
+    def __init__(self, configuration, retriever):
         self.configuration = configuration
         self.retriever = retriever
-        self.folder = folder
         self.dataset_data = {}
-        self.errors = errors
         self.created_date = None
 
     def get_data(self):
@@ -221,25 +219,22 @@ class NHCHurricaneForecast:
             ghaction_url = self.configuration["ghaction_url"]
             logger.info("Read the credentials from local secrets.")
 
-        forecasted_tracks_blob = None
-        observed_tracks_blob = None
-        try:
-            logger.info("Downloading historical forecasted_tracks...")
-            forecasted_tracks_blob = self.retriever.download_file(
+
+        logger.info("Downloading historical forecasted_tracks...")
+        forecasted_tracks_blob = self.retriever.download_file(
                 url="test",
                 account=account,
                 container=container,
                 key=key,
                 blob="noaa/nhc/forecasted_tracks.csv")
-            logger.info("Downloading historical observed_tracks...")
-            observed_tracks_blob = self.retriever.download_file(
+
+        logger.info("Downloading historical observed_tracks...")
+        observed_tracks_blob = self.retriever.download_file(
                 url="test",
                 account=account,
                 container=container,
                 key=key,
                 blob="noaa/nhc/observed_tracks.csv")
-        except Exception:
-            raise DownloadError("Failed to download from blob!")
 
         forecasted_tracks = self.dataset_data["forecasted_tracks"]
         stream = io.StringIO()

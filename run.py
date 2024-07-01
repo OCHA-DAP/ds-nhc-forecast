@@ -4,14 +4,13 @@ Top level script. Calls other functions that generate datasets that this script 
 
 """
 import logging
+import tempfile
 from os.path import expanduser, join, exists
 from typing import Any
 
 from hdx.api.configuration import Configuration
 from hdx.facades.infer_arguments import facade
 from hdx.utilities.downloader import Download
-from hdx.utilities.errors_onexit import ErrorsOnExit
-from hdx.utilities.path import wheretostart_tempdir_batch
 from hdx.utilities.retriever import Retrieve
 from nhc_forecast import NHCHurricaneForecast
 from datetime import datetime
@@ -128,24 +127,21 @@ class AzureBlobDownload(Download):
 
 def main(save: bool = False, use_saved: bool = False) -> None:
     """Generate datasets and upload them to Azure"""
-    with ErrorsOnExit() as errors:
-        with wheretostart_tempdir_batch(lookup) as info:
-            folder = info["folder"]
-            with AzureBlobDownload() as downloader:
-                retriever = Retrieve(
-                    downloader, folder, "saved_data", folder, save, use_saved)
-                configuration = Configuration.read()
-                nhc_forecast = NHCHurricaneForecast(configuration, retriever, folder, errors)
-                datasets = nhc_forecast.get_data()
-                if datasets:
-                    logger.info(f"Number of datasets to upload: {len(datasets)}")
-                    try:
-                        nhc_forecast.upload_dataset(datasets)
-                        logger.info("Successfully uploaded file(s) to blob")
-                    except Exception:
-                        logger.error("Failed to upload file to blob")
-                else:
-                    logger.info(f"No datasets were uploaded.")
+    with tempfile.TemporaryDirectory() as folder:
+        with AzureBlobDownload() as downloader:
+            retriever = Retrieve(downloader, folder, "saved_data", folder, save, use_saved)
+            configuration = Configuration.read()
+            nhc_forecast = NHCHurricaneForecast(configuration, retriever)
+            datasets = nhc_forecast.get_data()
+            if datasets:
+                logger.info(f"Number of datasets to upload: {len(datasets)}")
+                try:
+                    nhc_forecast.upload_dataset(datasets)
+                    logger.info("Successfully uploaded file(s) to blob")
+                except Exception:
+                    raise Exception("Failed to upload file to blob")
+            else:
+                logger.info(f"No datasets were uploaded.")
 
 
 if __name__ == "__main__":
