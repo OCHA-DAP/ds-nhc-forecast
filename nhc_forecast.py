@@ -9,7 +9,7 @@ NHC Forecast
 """
 import logging
 import requests
-from hdx.utilities.downloader import DownloadError
+from hdx.utilities.downloader import DownloadError, Download
 from bs4 import BeautifulSoup
 from dateutil import parser
 from lat_lon_parser import parse
@@ -212,26 +212,34 @@ class NHCHurricaneForecast:
             key = os.environ["KEY"]
             ghp = os.environ["GHP"]
             ghaction_url = os.environ["GH_ACTION_URL"]
+            logger.info("Read the credentials from secrets.")
         except Exception:
             account = self.configuration["account"]
             container = self.configuration["container"]
             key = self.configuration["key"]
             ghp = self.configuration["ghp"]
             ghaction_url = self.configuration["ghaction_url"]
+            logger.info("Read the credentials from local secrets.")
 
-        forecasted_tracks_blob = self.retriever.download_file(
-            url="test",
-            account=account,
-            container=container,
-            key=key,
-            blob="noaa/nhc/forecasted_tracks.csv")
-
-        observed_tracks_blob = self.retriever.download_file(
-            url="test",
-            account=account,
-            container=container,
-            key=key,
-            blob="noaa/nhc/observed_tracks.csv")
+        forecasted_tracks_blob = None
+        observed_tracks_blob = None
+        try:
+            logger.info("Downloading historical forecasted_tracks...")
+            forecasted_tracks_blob = self.retriever.download_file(
+                url="test",
+                account=account,
+                container=container,
+                key=key,
+                blob="noaa/nhc/forecasted_tracks.csv")
+            logger.info("Downloading historical observed_tracks...")
+            observed_tracks_blob = self.retriever.download_file(
+                url="test",
+                account=account,
+                container=container,
+                key=key,
+                blob="noaa/nhc/observed_tracks.csv")
+        except Exception:
+            raise DownloadError("Failed to download from blob!")
 
         forecasted_tracks = self.dataset_data["forecasted_tracks"]
         stream = io.StringIO()

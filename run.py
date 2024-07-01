@@ -11,6 +11,7 @@ from hdx.api.configuration import Configuration
 from hdx.facades.infer_arguments import facade
 from hdx.utilities.downloader import Download
 from hdx.utilities.errors_onexit import ErrorsOnExit
+from hdx.utilities.path import wheretostart_tempdir_batch
 from hdx.utilities.retriever import Retrieve
 from nhc_forecast import NHCHurricaneForecast
 from datetime import datetime
@@ -83,19 +84,19 @@ class AzureBlobDownload(Download):
         }
 
         signature = (parameters['verb'] + '\n'
-                          + parameters['Content-Encoding'] + '\n'
-                          + parameters['Content-Language'] + '\n'
-                          + parameters['Content-Length'] + '\n'
-                          + parameters['Content-MD5'] + '\n'
-                          + parameters['Content-Type'] + '\n'
-                          + parameters['Date'] + '\n'
-                          + parameters['If-Modified-Since'] + '\n'
-                          + parameters['If-Match'] + '\n'
-                          + parameters['If-None-Match'] + '\n'
-                          + parameters['If-Unmodified-Since'] + '\n'
-                          + parameters['Range'] + '\n'
-                          + parameters['CanonicalizedHeaders']
-                          + parameters['CanonicalizedResource'])
+                     + parameters['Content-Encoding'] + '\n'
+                     + parameters['Content-Language'] + '\n'
+                     + parameters['Content-Length'] + '\n'
+                     + parameters['Content-MD5'] + '\n'
+                     + parameters['Content-Type'] + '\n'
+                     + parameters['Date'] + '\n'
+                     + parameters['If-Modified-Since'] + '\n'
+                     + parameters['If-Match'] + '\n'
+                     + parameters['If-None-Match'] + '\n'
+                     + parameters['If-Unmodified-Since'] + '\n'
+                     + parameters['Range'] + '\n'
+                     + parameters['CanonicalizedHeaders']
+                     + parameters['CanonicalizedResource'])
 
         signed_string = base64.b64encode(hmac.new(base64.b64decode(key), msg=signature.encode('utf-8'),
                                                   digestmod=hashlib.sha256).digest()).decode()
@@ -127,23 +128,24 @@ class AzureBlobDownload(Download):
 
 def main(save: bool = False, use_saved: bool = False) -> None:
     """Generate datasets and upload them to Azure"""
-    folder = "tmp"
     with ErrorsOnExit() as errors:
-        with AzureBlobDownload() as downloader:
-            retriever = Retrieve(
-                downloader, folder, "saved_data", folder, save, use_saved)
-            configuration = Configuration.read()
-            nhc_forecast = NHCHurricaneForecast(configuration, retriever, folder, errors)
-            datasets = nhc_forecast.get_data()
-            if datasets:
-                logger.info(f"Number of datasets to upload: {len(datasets)}")
-                try:
-                    nhc_forecast.upload_dataset(datasets)
-                    logger.info("Successfully uploaded file(s) to blob")
-                except Exception:
-                    logger.error("Failed to upload file to blob")
-            else:
-                logger.info(f"No datasets were uploaded.")
+        with wheretostart_tempdir_batch(lookup) as info:
+            folder = info["folder"]
+            with AzureBlobDownload() as downloader:
+                retriever = Retrieve(
+                    downloader, folder, "saved_data", folder, save, use_saved)
+                configuration = Configuration.read()
+                nhc_forecast = NHCHurricaneForecast(configuration, retriever, folder, errors)
+                datasets = nhc_forecast.get_data()
+                if datasets:
+                    logger.info(f"Number of datasets to upload: {len(datasets)}")
+                    try:
+                        nhc_forecast.upload_dataset(datasets)
+                        logger.info("Successfully uploaded file(s) to blob")
+                    except Exception:
+                        logger.error("Failed to upload file to blob")
+                else:
+                    logger.info(f"No datasets were uploaded.")
 
 
 if __name__ == "__main__":
