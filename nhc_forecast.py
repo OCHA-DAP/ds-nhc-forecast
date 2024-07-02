@@ -9,13 +9,13 @@ NHC Forecast
 """
 import logging
 import requests
-from hdx.utilities.downloader import DownloadError, Download
+from hdx.utilities.downloader import DownloadError
 from bs4 import BeautifulSoup
 from dateutil import parser
 from lat_lon_parser import parse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 import pandas as pd
-import os,io
+import os, io
 import time
 
 logger = logging.getLogger(__name__)
@@ -219,22 +219,13 @@ class NHCHurricaneForecast:
             ghaction_url = self.configuration["ghaction_url"]
             logger.info("Read the credentials from local secrets.")
 
-
         logger.info("Downloading historical forecasted_tracks...")
         forecasted_tracks_blob = self.retriever.download_file(
-                url="test",
-                account=account,
-                container=container,
-                key=key,
-                blob="noaa/nhc/forecasted_tracks.csv")
-
-        logger.info("Downloading historical observed_tracks...")
-        observed_tracks_blob = self.retriever.download_file(
-                url="test",
-                account=account,
-                container=container,
-                key=key,
-                blob="noaa/nhc/observed_tracks.csv")
+            url="test",
+            account=account,
+            container=container,
+            key=key,
+            blob="noaa/nhc/forecasted_tracks.csv")
 
         forecasted_tracks = self.dataset_data["forecasted_tracks"]
         stream = io.StringIO()
@@ -242,14 +233,24 @@ class NHCHurricaneForecast:
         forecasted_tracks.to_csv(stream, sep=";", index=False)
         forecasted_tracks_df = pd.read_csv(forecasted_tracks_blob, sep=";", escapechar='\\')
 
+        logger.info("Downloading historical observed_tracks...")
+        observed_tracks_blob = self.retriever.download_file(
+            url="test",
+            account=account,
+            container=container,
+            key=key,
+            blob="noaa/nhc/observed_tracks.csv")
+
         observed_tracks = self.dataset_data["observed_tracks"]
         stream = io.StringIO()
         observed_tracks = pd.DataFrame(observed_tracks)
         observed_tracks.to_csv(stream, sep=";", index=False)
         observed_tracks_df = pd.read_csv(observed_tracks_blob, sep=";", escapechar='\\')
 
-        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks]).drop_duplicates().reset_index(drop=True)
-        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks]).drop_duplicates().reset_index(drop=True)
+        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks]).drop_duplicates().reset_index(
+            drop=True)
+        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks]).drop_duplicates().reset_index(
+            drop=True)
 
         aub = AzureBlobUpload()
 
