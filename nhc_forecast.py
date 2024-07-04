@@ -189,15 +189,17 @@ class NHCHurricaneForecast:
                     maxwind = forecast_line[2]
 
                 if latitude and longitude and maxwind:
-                    forecast = {"id": id,
-                                "name": name,
-                                "issuance": issuance,
-                                "basin": id[:2],
-                                "latitude": parse(latitude),
-                                "longitude": parse(longitude),
-                                "maxwind": int(maxwind),
-                                "validTime": validTime}
-                    self.dataset_data["forecasted_tracks"].append(forecast)
+                    maxwind = int(maxwind)
+                    if maxwind > 0:
+                        forecast = {"id": id,
+                                    "name": name,
+                                    "issuance": issuance,
+                                    "basin": id[:2],
+                                    "latitude": parse(latitude),
+                                    "longitude": parse(longitude),
+                                    "maxwind": maxwind,
+                                    "validTime": validTime}
+                        self.dataset_data["forecasted_tracks"].append(forecast)
                     maxwind = latitude = longitude = validTime = None
 
         return ["observed_tracks", "forecasted_tracks"]
@@ -247,10 +249,8 @@ class NHCHurricaneForecast:
         observed_tracks.to_csv(stream, sep=";", index=False)
         observed_tracks_df = pd.read_csv(observed_tracks_blob, sep=";", escapechar='\\')
 
-        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks]).drop_duplicates().reset_index(
-            drop=True)
-        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks]).drop_duplicates().reset_index(
-            drop=True)
+        forecasted_tracks_append = pd.concat([forecasted_tracks_df, forecasted_tracks]).drop_duplicates().reset_index(drop=True)
+        observed_tracks_append = pd.concat([observed_tracks_df, observed_tracks]).drop_duplicates().reset_index(drop=True)
 
         aub = AzureBlobUpload()
 
@@ -273,13 +273,13 @@ class NHCHurricaneForecast:
                         account=account,
                         container=container,
                         key=key,
-                        data=forecasted_tracks_append)
+                        data=forecasted_tracks_append.sort_values(['issuance','validTime'], ascending=False))
 
         aub.upload_file(dataset_name="observed_tracks",
                         account=account,
                         container=container,
                         key=key,
-                        data=observed_tracks_append)
+                        data=observed_tracks_append.sort_values(['lastUpdate'], ascending=False))
 
         try:
             trigger_for_active_storms(ghaction_url, ghp)
