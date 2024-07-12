@@ -9,6 +9,7 @@ NHC Forecast
 """
 import logging
 import requests
+from dateutil.relativedelta import relativedelta
 from hdx.utilities.downloader import DownloadError
 from bs4 import BeautifulSoup
 from dateutil import parser
@@ -73,6 +74,8 @@ def get_valid_time_in_datetime(validTime, issuance):
     newdatetime = issuance_datetime.replace(day=day,
                                             hour=hour,
                                             minute=minute)
+    if day < issuance_datetime.day:
+        newdatetime = newdatetime + relativedelta(months=1)
 
     return newdatetime.strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -176,7 +179,7 @@ class NHCHurricaneForecast:
                 ln = ln.replace("  ", " ")
                 forecast_line = ln.split(" ")
 
-                if ln.startswith("FORECAST VALID") and len(forecast_line) >= 5:
+                if (ln.startswith("FORECAST VALID") or ln.startswith("OUTLOOK VALID")) and len(forecast_line) >= 5:
                     validTime = get_valid_time_in_datetime(forecast_line[2], issuance)
                     latitude = forecast_line[3]
                     longitude = forecast_line[4]

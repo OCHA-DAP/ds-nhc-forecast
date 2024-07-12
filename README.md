@@ -33,14 +33,18 @@ Expected formats for (full example available [here](https://www.nhc.noaa.gov/pro
                 },...}
 ```
 Expected formats for Forecast Advisory [full example here](https://www.nhc.noaa.gov/productexamples/TCM_example.txt):
-```    FORECAST VALID 30/0000Z 22.9N  68.1W
+```    
+    FORECAST VALID 30/0000Z 22.9N  68.1W
             MAX WIND  85 KT...GUSTS 105 KT.
             64 KT... 15NE  10SE   0SW  10NW.
             50 KT... 30NE  20SE  10SW  20NW.
             34 KT... 80NE  50SE  30SW  60NW.
+            
+    OUTLOOK VALID 02/1200Z 27.5N  79.8W
+            MAX WIND 115 KT...GUSTS 140 KT.
 ```
 We parse the main `CurrentStorms.json` file and the url listed under the `forecastAdvisory`.
-We collected the relevant fields in order to append to two separate historical files containing the following fields:
+We collect the relevant fields [lookup: `FORECAST VALID`, `OUTLOOK VALID` and `REMNANTS OF CENTER LOCATED NEAR`] in order to append to two separate historical files containing the following fields:
 #### Observed tracks:
 `id; name; basin; intensity; pressure; latitude; longitude; lastUpdate`
 #### Forecasted tracks:
