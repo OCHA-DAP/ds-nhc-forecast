@@ -214,14 +214,14 @@ class NHCHurricaneForecast:
             container = os.environ["CONTAINER"]
             key = os.environ["KEY"]
             ghp = os.environ["GHP"]
-            ghaction_url = os.environ["GH_ACTION_URL"]
+            trigger_urls = os.environ["GH_ACTION_TRIGGER_URLS"].split(",")
             logger.info("Read the credentials from secrets.")
         except Exception:
             account = self.configuration["account"]
             container = self.configuration["container"]
             key = self.configuration["key"]
             ghp = self.configuration["ghp"]
-            ghaction_url = self.configuration["ghaction_url"]
+            trigger_urls = self.configuration["ghaction_url"]
             logger.info("Read the credentials from local secrets.")
 
         logger.info("Downloading historical forecasted_tracks...")
@@ -284,10 +284,11 @@ class NHCHurricaneForecast:
                         key=key,
                         data=observed_tracks_append.sort_values(['lastUpdate'], ascending=False))
 
-        try:
-            trigger_for_active_storms(ghaction_url, ghp)
-            logger.info("Successfully triggered Haiti Hurricanes action.")
-        except Exception:
-            logger.error("Failed to trigger Haiti Hurricanes action.")
+        for url in trigger_urls:
+            try:
+                trigger_for_active_storms(url, ghp)
+                logger.info(f"Successfully triggered url {url}")
+            except Exception:
+                logger.error(f"Failed to trigger url {url}")
 
         return dataset_names
