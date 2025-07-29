@@ -31,7 +31,7 @@ jobs:
         STORAGE_ACCOUNT: ${{ secrets.STORAGE_ACCOUNT }}
         KEY: ${{ secrets.KEY }}
         GHP: ${{ secrets.GHP }}
-        GH_ACTION_URL: ${{ secrets.GH_ACTION_URL }}
+        GH_ACTION_TRIGGER_URLS: ${{ vars.GH_ACTION_TRIGGER_URLS }}
       run: |
         python run.py
     - name: Commit updated data bundle
